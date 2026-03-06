@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>進貨掃描上傳</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f12;
+    --surface: #161920;
+    --surface2: #1e222c;
+    --border: #2a2f3d;
+    --accent: #4ade80;
+    --accent2: #22d3ee;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --font-body: 'Noto Sans TC', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header-title { font-size: 16px; font-weight: 700; }
+  .header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; font-family: var(--font-mono); }
+  .header-date {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(74,222,128,0.08);
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(74,222,128,0.2);
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .status-item {
+    flex: 1;
+    background: var(--surface);
+    padding: 10px 16px;
+    text-align: center;
+  }
+  .status-val {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .status-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Main */
+  .main { padding: 20px; max-width: 600px; margin: 0 auto; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(74,222,128,0.04);
+  }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-icon { font-size: 40px; margin-bottom: 12px; }
+  .upload-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .upload-hint { font-size: 12px; color: var(--muted); }
+
+  /* Preview */
+  .preview-wrap {
+    margin-top: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    display: none;
+  }
+  .preview-wrap.show { display: block; }
+  .preview-wrap img { width: 100%; display: block; max-height: 300px; object-fit: contain; background: #000; }
+  .preview-actions {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+  }
+
+  /* Buttons */
+  .btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    flex: 1;
+    justify-content: center;
+  }
+  .btn-primary:hover { background: #22c55e; }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-outline:hover { border-color: var(--muted); }
+  .btn-danger-outline {
+    background: transparent;
+    border: 1px solid rgba(248,113,113,0.3);
+    color: var(--danger);
+  }
+  .btn-success {
+    background: var(--accent);
+    color: #000;
+    width: 100%;
+    justify-content: center;
+    padding: 14px;
+    font-size: 15px;
+    border-radius: 10px;
+    margin-top: 16px;
+  }
+  .btn-success:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+
+  /* Loading */
+  .loading-wrap {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    background: var(--surface);
+    border-radius: 12px;
+    margin-top: 16px;
+  }
+  .loading-wrap.show { display: flex; }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--muted); font-family: var(--font-mono); }
+
+  /* Results */
+  .result-wrap {
+    display: none;
+    margin-top: 16px;
+  }
+  .result-wrap.show { display: block; }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .result-title { font-size: 13px; font-weight: 700; color: var(--accent2); }
+  .result-meta { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+  /* Table */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    background: var(--surface2);
+    padding: 8px 10px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 10px;
+    border-bottom: 1px solid rgba(42,47,61,0.5);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .td-sku { font-family: var(--font-mono); color: var(--accent2); font-size: 11px; }
+  .td-qty {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--accent);
+    text-align: right;
+  }
+  .td-name { color: var(--text); }
+  .td-note { color: var(--muted); font-size: 11px; }
+
+  /* Editable */
+  .editable {
+    background: transparent;
+    border: 1px solid transparent;
+    color: inherit;
+    font: inherit;
+    padding: 2px 4px;
+    border-radius: 4px;
+    width: 100%;
+    transition: border-color 0.15s;
+  }
+  .editable:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(74,222,128,0.05);
+  }
+  input.editable-qty {
+    width: 60px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* Summary box */
+  .summary-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .summary-label { font-size: 12px; color: var(--muted); }
+  .summary-total {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .summary-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Alert */
+  .alert {
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-top: 12px;
+    display: none;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .alert.show { display: flex; }
+  .alert-success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: var(--accent); }
+  .alert-error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: var(--danger); }
+  .alert-warn { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); color: var(--warn); }
+
+  /* History */
+  .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 24px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .history-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .history-date { font-family: var(--font-mono); font-size: 12px; color: var(--accent2); }
+  .history-count { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .history-qty { font-family: var(--font-mono); font-weight: 700; color: var(--accent); }
+
+  /* Config panel */
+  .config-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .config-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .config-field { margin-bottom: 10px; }
+  .config-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .config-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+  .config-input:focus { outline: none; border-color: var(--accent); }
+  .config-save {
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.3);
+    color: var(--accent);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: var(--font-body);
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    margin-left: 8px;
+  }
+  .tag-green { background: rgba(74,222,128,0.15); color: var(--accent); }
+  .tag-blue { background: rgba(34,211,238,0.15); color: var(--accent2); }
+
+  .delete-row {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  .delete-row:hover { color: var(--danger); background: rgba(248,113,113,0.1); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📦</div>
+  <div>
+    <div class="header-title">進貨掃描上傳</div>
+    <div class="header-sub">PURCHASE RECEIPT SCANNER</div>
+  </div>
+  <div class="header-date" id="todayDate">—</div>
+</div>
+
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-val" id="statToday">0</div>
+    <div class="status-label">今日筆數</div>
+  </div>
+  <div class="status-item">
+    <div class="status-val" id="statQty">0</div>
+    <div class="status-label">今日入庫盒</div>
+  </div>
+  <div class="status-item">
+    <div class="status-val" id="statTotal">0</div>
+    <div class="status-label">累計筆數</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Config -->
+  <div class="config-wrap" id="configWrap">
+    <div class="config-title">⚙️ 設定 <span class="tag tag-blue">需設定後才能使用</span></div>
+    <div class="config-field">
+      <div class="config-label">Google Sheet 試算表 ID（新建試算表後貼上）</div>
+      <input class="config-input" id="cfgSheetId" placeholder="例：1AbCdEfGhIjKlMnOpQrStUvWxYz..." />
+    </div>
+    <div class="config-field">
+      <div class="config-label">Apps Script 部署網址（部署後貼上）</div>
+      <input class="config-input" id="cfgUrl" placeholder="https://script.google.com/macros/s/..." />
+    </div>
+    <button class="config-save" onclick="saveConfig()">💾 儲存設定</button>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" accept="image/*" id="fileInput" onchange="handleFile(event)">
+    <div class="upload-icon">📷</div>
+    <div class="upload-title">點擊或拖拉上傳銷貨單照片</div>
+    <div class="upload-hint">支援 JPG、PNG、HEIC 等圖片格式</div>
+  </div>
+
+  <div class="preview-wrap" id="previewWrap">
+    <img id="previewImg" src="" alt="預覽">
+    <div class="preview-actions">
+      <button class="btn btn-outline" onclick="clearFile()">✕ 清除</button>
+      <button class="btn btn-primary" id="scanBtn" onclick="scanImage()">🔍 AI 解析單據</button>
+    </div>
+  </div>
+
+  <div class="loading-wrap" id="loadingWrap">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">正在解析圖片...</div>
+  </div>
+
+  <!-- Results -->
+  <div class="result-wrap" id="resultWrap">
+    <div class="result-header">
+      <div class="result-title">📋 解析結果 <span class="tag tag-green" id="resultCount">0 筆</span></div>
+      <div class="result-meta" id="resultDate">—</div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>貨號/品名</th>
+            <th>顏色備註</th>
+            <th style="text-align:right">數量</th>
+            <th style="text-align:right">單價</th>
+            <th style="text-align:right">小計</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+
+    <div class="summary-box">
+      <div>
+        <div class="summary-label">本批入庫總計</div>
+        <div class="summary-sub" id="summaryDate">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="summary-total"><span id="totalQty">0</span> 盒</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">成本 $ <span id="totalCost">0</span></div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn" id="alertWarn">
+      ⚠️ <span id="alertWarnMsg"></span>
+    </div>
+
+    <button class="btn btn-success" id="submitBtn" onclick="submitToSheet()">
+      ☁️ 寫入 Google Sheet 並更新庫存
+    </button>
+
+    <div class="alert alert-success" id="alertSuccess">
+      ✅ <span id="alertSuccessMsg"></span>
+    </div>
+    <div class="alert alert-error" id="alertError">
+      ❌ <span id="alertErrorMsg"></span>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="section-title">今日上傳記錄</div>
+  <div id="historyList"><div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">尚無記錄</div></div>
+
+</div>
+
+<script>
+// ── Config ──
+const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
+let APPS_SCRIPT_URL = '';
+
+let SHEET_ID = '';
+
+function saveConfig() {
+  const url = document.getElementById('cfgUrl').value.trim();
+  const sid = document.getElementById('cfgSheetId').value.trim();
+  if (!url || !sid) return alert('請填入試算表 ID 與 Apps Script 網址');
+  APPS_SCRIPT_URL = url;
+  SHEET_ID = sid;
+  localStorage.setItem('apps_script_url', url);
+  localStorage.setItem('sheet_id', sid);
+  document.getElementById('configWrap').style.borderColor = 'rgba(74,222,128,0.5)';
+  showAlert('success', '設定已儲存！');
+}
+
+function loadConfig() {
+  const savedUrl = localStorage.getItem('apps_script_url');
+  const savedSid = localStorage.getItem('sheet_id');
+  if (savedUrl) { APPS_SCRIPT_URL = savedUrl; document.getElementById('cfgUrl').value = savedUrl; }
+  if (savedSid) { SHEET_ID = savedSid; document.getElementById('cfgSheetId').value = savedSid; }
+  if (savedUrl && savedSid) document.getElementById('configWrap').style.borderColor = 'rgba(74,222,128,0.3)';
+}
+
+// ── Date ──
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+function initDate() {
+  document.getElementById('todayDate').textContent = today();
+  document.getElementById('resultDate').textContent = today();
+  document.getElementById('summaryDate').textContent = today();
+}
+
+// ── File handling ──
+let currentBase64 = '';
+let currentFile = null;
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  currentFile = file;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const result = ev.target.result;
+    document.getElementById('previewImg').src = result;
+    document.getElementById('previewWrap').classList.add('show');
+    // base64 without prefix
+    currentBase64 = result.split(',')[1];
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearFile() {
+  document.getElementById('previewWrap').classList.remove('show');
+  document.getElementById('fileInput').value = '';
+  document.getElementById('resultWrap').classList.remove('show');
+  hideAlerts();
+  currentBase64 = '';
+}
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('fileInput').files = dt.files;
+    handleFile({ target: { files: [file] } });
+  }
+});
+
+// ── AI Scan ──
+let parsedItems = [];
+
+async function scanImage() {
+  if (!currentBase64) return;
+
+  document.getElementById('previewWrap').classList.remove('show');
+  document.getElementById('resultWrap').classList.remove('show');
+  document.getElementById('loadingWrap').classList.add('show');
+  document.getElementById('loadingText').textContent = '🤖 AI 正在解析單據...';
+  hideAlerts();
+
+  const mediaType = currentFile?.type || 'image/jpeg';
+
+  const prompt = `這是一張銷貨單或進貨單的照片。請仔細解析並以 JSON 格式回傳所有商品明細。
+
+注意事項：
+- 每個顏色/規格是獨立一筆
+- 數量單位通常是「盒」
+- 備註欄位填入顏色、規格等資訊
+- 如果同一個產品編號出現多行（不同顏色），分別列出
+- unit_price 是進貨單價（成本），total_price 是該行小計
+
+請只回傳 JSON，格式如下：
+{
+  "supplier": "供應商名稱",
+  "invoice_no": "單據號碼（如果有）",
+  "invoice_date": "單據日期（如果有，格式 YYYY/MM/DD）",
+  "items": [
+    {
+      "product_code": "產品編號（條碼或貨號）",
+      "product_name": "商品名稱",
+      "quantity": 數量（數字）,
+      "unit_price": 進貨單價（數字，如果有，否則null）,
+      "total_price": 行小計（數字，如果有，否則null）,
+      "note": "備註（顏色/規格）"
+    }
+  ]
+}`;
+
+  try {
+    const res = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: currentBase64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    const data = await res.json();
+    const text = data.content?.map(c => c.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    parsedItems = parsed.items || [];
+
+    document.getElementById('loadingWrap').classList.remove('show');
+    document.getElementById('previewWrap').classList.add('show');
+    renderResults(parsed);
+
+  } catch (e) {
+    document.getElementById('loadingWrap').classList.remove('show');
+    document.getElementById('previewWrap').classList.add('show');
+    showAlert('error', `解析失敗：${e.message}`);
+    console.error(e);
+  }
+}
+
+function renderResults(parsed) {
+  const tbody = document.getElementById('resultBody');
+  tbody.innerHTML = '';
+  parsedItems = parsed.items || [];
+
+  parsedItems.forEach((item, i) => {
+    const subtotal = (Number(item.unit_price)||0) * (Number(item.quantity)||0);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="td-sku">
+          <input class="editable" value="${escHtml(item.product_code || '')}" oninput="parsedItems[${i}].product_code=this.value" placeholder="貨號">
+        </div>
+        <div class="td-name" style="margin-top:2px">
+          <input class="editable" value="${escHtml(item.product_name || '')}" oninput="parsedItems[${i}].product_name=this.value" style="font-size:12px;color:var(--muted)" placeholder="品名">
+        </div>
+      </td>
+      <td>
+        <input class="editable td-note" value="${escHtml(item.note || '')}" oninput="parsedItems[${i}].note=this.value" placeholder="備註">
+      </td>
+      <td>
+        <input class="editable editable-qty" type="number" value="${item.quantity || 0}" oninput="parsedItems[${i}].quantity=+this.value; updateTotal()" min="0">
+      </td>
+      <td>
+        <input class="editable editable-qty" type="number" value="${item.unit_price || ''}" oninput="parsedItems[${i}].unit_price=+this.value; updateTotal()" placeholder="—" min="0" style="color:var(--warn)">
+      </td>
+      <td style="text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--muted)" id="subtotal-${i}">
+        ${subtotal > 0 ? '$' + subtotal.toLocaleString() : '—'}
+      </td>
+      <td><button class="delete-row" onclick="removeRow(${i})" title="刪除">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  updateTotal();
+  document.getElementById('resultCount').textContent = `${parsedItems.length} 筆`;
+  document.getElementById('resultWrap').classList.add('show');
+
+  if (parsed.supplier) {
+    showAlert('warn', `供應商：${parsed.supplier}　單號：${parsed.invoice_no || '—'}　單據日期：${parsed.invoice_date || '—'}`);
+  }
+}
+
+function removeRow(i) {
+  parsedItems.splice(i, 1);
+  renderResults({ items: parsedItems });
+}
+
+function updateTotal() {
+  const total = parsedItems.reduce((s, item) => s + (Number(item.quantity) || 0), 0);
+  const cost = parsedItems.reduce((s, item) => s + (Number(item.unit_price)||0) * (Number(item.quantity)||0), 0);
+  document.getElementById('totalQty').textContent = total;
+  document.getElementById('totalCost').textContent = cost > 0 ? cost.toLocaleString() : '—';
+  // update subtotals
+  parsedItems.forEach((item, i) => {
+    const el = document.getElementById(`subtotal-${i}`);
+    if (el) {
+      const sub = (Number(item.unit_price)||0) * (Number(item.quantity)||0);
+      el.textContent = sub > 0 ? '$' + sub.toLocaleString() : '—';
+    }
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Submit to Google Sheet ──
+async function submitToSheet() {
+  if (!APPS_SCRIPT_URL) {
+    showAlert('error', '請先設定 Apps Script 網址！');
+    return;
+  }
+  if (!parsedItems.length) {
+    showAlert('error', '沒有資料可以上傳');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 上傳中...';
+
+  const payload = {
+    action: 'addPurchase',
+    sheet_id: SHEET_ID,
+    date: today(),
+    items: parsedItems.map(item => ({
+      date: today(),
+      product_code: item.product_code || '',
+      product_name: item.product_name || '',
+      quantity: Number(item.quantity) || 0,
+      unit_price: Number(item.unit_price) || 0,
+      total_price: (Number(item.unit_price)||0) * (Number(item.quantity)||0),
+      note: item.note || ''
+    }))
+  };
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    // no-cors 無法讀取回應，但資料已送出
+    showAlert('success', `✅ 已上傳 ${parsedItems.length} 筆進貨資料到 Google Sheet！庫存將自動更新。`);
+    saveHistory(parsedItems);
+    updateStats();
+    clearFile();
+    parsedItems = [];
+    document.getElementById('resultWrap').classList.remove('show');
+
+  } catch (e) {
+    showAlert('error', `上傳失敗：${e.message}`);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '☁️ 寫入 Google Sheet 並更新庫存';
+}
+
+// ── History / Stats ──
+function saveHistory(items) {
+  const d = today();
+  const history = JSON.parse(localStorage.getItem('purchase_history') || '[]');
+  history.unshift({
+    date: d,
+    count: items.length,
+    qty: items.reduce((s,i) => s + (Number(i.quantity)||0), 0),
+    cost: items.reduce((s,i) => s + (Number(i.unit_price)||0)*(Number(i.quantity)||0), 0),
+    time: new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})
+  });
+  localStorage.setItem('purchase_history', JSON.stringify(history.slice(0, 50)));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('purchase_history') || '[]');
+  const el = document.getElementById('historyList');
+  if (!history.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">尚無記錄</div>';
+    return;
+  }
+  el.innerHTML = history.map(h => `
+    <div class="history-item">
+      <div>
+        <div class="history-date">${h.date} ${h.time || ''}</div>
+        <div class="history-count">${h.count} 種商品${h.cost > 0 ? '　成本 $' + h.cost.toLocaleString() : ''}</div>
+      </div>
+      <div class="history-qty">+${h.qty} 盒</div>
+    </div>
+  `).join('');
+}
+
+function updateStats() {
+  const d = today();
+  const history = JSON.parse(localStorage.getItem('purchase_history') || '[]');
+  const todayItems = history.filter(h => h.date === d);
+  document.getElementById('statToday').textContent = todayItems.length;
+  document.getElementById('statQty').textContent = todayItems.reduce((s,h) => s + h.qty, 0);
+  document.getElementById('statTotal').textContent = history.length;
+}
+
+// ── Alert helpers ──
+function showAlert(type, msg) {
+  hideAlerts();
+  if (type === 'success') {
+    document.getElementById('alertSuccess').classList.add('show');
+    document.getElementById('alertSuccessMsg').textContent = msg;
+  } else if (type === 'error') {
+    document.getElementById('alertError').classList.add('show');
+    document.getElementById('alertErrorMsg').textContent = msg;
+  } else if (type === 'warn') {
+    document.getElementById('alertWarn').classList.add('show');
+    document.getElementById('alertWarnMsg').textContent = msg;
+  }
+}
+function hideAlerts() {
+  ['alertSuccess','alertError','alertWarn'].forEach(id => {
+    document.getElementById(id).classList.remove('show');
+  });
+}
+
+// ── Init ──
+initDate();
+loadConfig();
+renderHistory();
+updateStats();
+</script>
+</body>
+</html>
