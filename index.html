@@ -826,30 +826,16 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 });
 
 // ── Google Sheets 進貨資料 ──
-const SHEET_ID = '1N8ddE7GbtwQQm-WFX8b-Ko9IdxUvak1w7WAryTobbyk';
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby9KMBSAy3c6APymg5Z8vIumXZlG9lkCgEojTLi0ss2UhrsYVZf9NuL3z4iP1Eca1pO/exec';
 
 let INVENTORY = {};
 let inventoryLoaded = false;
 
 async function loadInventory() {
   try {
-    const res = await fetch(SHEET_URL);
-    const text = await res.text();
-    const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
-    const rows = json.table.rows;
-    INVENTORY = {};
-    rows.forEach(row => {
-      if (!row.c || !row.c[0] || !row.c[0].v) return;
-      const id    = String(row.c[0].v).trim();
-      const date  = row.c[1] ? String(row.c[1].v || '').trim() : '';
-      const batch = row.c[2] ? String(row.c[2].v || '').trim() : '';
-      const qty   = row.c[3] ? Number(row.c[3].v) : 0;
-      const cost  = row.c[4] ? Number(row.c[4].v) : 0;
-      const note  = row.c[5] ? String(row.c[5].v || '').trim() : '';
-      if (!INVENTORY[id]) INVENTORY[id] = [];
-      INVENTORY[id].push({ date, batch, qty, cost, note });
-    });
+    const res = await fetch(APPS_SCRIPT_URL);
+    const data = await res.json();
+    INVENTORY = data;
     inventoryLoaded = true;
   } catch(e) {
     console.warn('無法載入進貨資料：', e);
