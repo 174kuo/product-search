@@ -438,7 +438,163 @@
 
     /* Pagination: larger touch targets */
     .page-btn { padding: 10px 14px; font-size: 13px; }
+
+    /* Modal mobile */
+    .modal-box { margin: 0; border-radius: 16px 16px 0 0; max-height: 90vh; position: fixed; bottom: 0; left: 0; right: 0; width: 100%; }
+    .modal-grid { grid-template-columns: 1fr 1fr; }
   }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 620px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    animation: slideUp 0.22s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 24px 24px 0;
+    gap: 12px;
+  }
+  .modal-title-wrap { flex: 1; min-width: 0; }
+  .modal-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+  }
+  .modal-name {
+    font-size: 17px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.4;
+    word-break: break-all;
+  }
+  .modal-close {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 10px;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .modal-close:hover { color: var(--text); border-color: var(--accent); }
+
+  .modal-body { padding: 20px 24px 24px; }
+
+  .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .modal-stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .modal-stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .modal-stat-value {
+    font-size: 18px;
+    font-weight: 600;
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+  }
+  .modal-stat-value.accent { color: var(--accent2); }
+  .modal-stat-value.green { color: var(--green); }
+  .modal-stat-value.amber { color: var(--amber); }
+
+  .modal-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .inv-table th {
+    text-align: left;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .inv-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(46,46,56,0.5);
+    vertical-align: middle;
+  }
+  .inv-table tr:last-child td { border-bottom: none; }
+  .inv-table tr:hover td { background: rgba(124,106,247,0.04); }
+  .inv-batch {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    background: rgba(124,106,247,0.1);
+    border-radius: 4px;
+    padding: 2px 6px;
+    display: inline-block;
+  }
+  .inv-qty {
+    font-weight: 600;
+    color: var(--green);
+    font-family: 'Space Mono', monospace;
+  }
+  .inv-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 20px 0;
+  }
+
+  /* clickable rows */
+  tbody tr { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -489,6 +645,35 @@
   </div>
 
   <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <div class="modal-id" id="modalId"></div>
+        <div class="modal-name" id="modalName"></div>
+      </div>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid" id="modalGrid"></div>
+      <div class="modal-section-title">進貨記錄</div>
+      <table class="inv-table">
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>批號</th>
+            <th>數量（盒）</th>
+            <th>成本/盒</th>
+            <th>備註</th>
+          </tr>
+        </thead>
+        <tbody id="modalInvBody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -640,8 +825,113 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   render();
 });
 
-// Initial render - show all
-render();
+// ── Google Sheets 進貨資料 ──
+const SHEET_ID = '1N8ddE7GbtwQQm-WFX8b-Ko9IdxUvak1w7WAryTobbyk';
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Sheet1`;
+
+let INVENTORY = {};
+let inventoryLoaded = false;
+
+async function loadInventory() {
+  try {
+    const res = await fetch(SHEET_URL);
+    const text = await res.text();
+    const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    const rows = json.table.rows;
+    INVENTORY = {};
+    rows.forEach(row => {
+      if (!row.c || !row.c[0] || !row.c[0].v) return;
+      const id    = String(row.c[0].v).trim();
+      const date  = row.c[1] ? String(row.c[1].v || '').trim() : '';
+      const batch = row.c[2] ? String(row.c[2].v || '').trim() : '';
+      const qty   = row.c[3] ? Number(row.c[3].v) : 0;
+      const cost  = row.c[4] ? Number(row.c[4].v) : 0;
+      const note  = row.c[5] ? String(row.c[5].v || '').trim() : '';
+      if (!INVENTORY[id]) INVENTORY[id] = [];
+      INVENTORY[id].push({ date, batch, qty, cost, note });
+    });
+    inventoryLoaded = true;
+  } catch(e) {
+    console.warn('無法載入進貨資料：', e);
+    inventoryLoaded = true;
+  }
+}
+
+// ── Modal Logic ──
+const overlay = document.getElementById('modalOverlay');
+const modalClose = document.getElementById('modalClose');
+
+function openModal(product) {
+  document.getElementById('modalId').textContent = product.id;
+  document.getElementById('modalName').textContent =
+    (product.brand ? product.brand + '  ' : '') + product.name;
+
+  const grid = document.getElementById('modalGrid');
+  const invRows = INVENTORY[product.id] || [];
+
+  grid.innerHTML = `
+    <div class="modal-stat">
+      <div class="modal-stat-label">蝦皮售價</div>
+      <div class="modal-stat-value accent">${product.price !== null ? '$ ' + formatNum(product.price) : '—'}</div>
+    </div>
+    <div class="modal-stat">
+      <div class="modal-stat-label">成本</div>
+      <div class="modal-stat-value">${product.cost && product.cost > 0 ? '$ ' + formatNum(product.cost) : '—'}</div>
+    </div>
+    <div class="modal-stat">
+      <div class="modal-stat-label">分類</div>
+      <div class="modal-stat-value" style="font-size:14px;font-family:'Noto Sans TC',sans-serif;">${product.category}</div>
+    </div>
+  `;
+
+  const tbody = document.getElementById('modalInvBody');
+  if (invRows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="inv-empty">尚無進貨記錄</td></tr>`;
+  } else {
+    tbody.innerHTML = invRows.map(r => `
+      <tr>
+        <td>${r.date}</td>
+        <td><span class="inv-batch">${r.batch}</span></td>
+        <td class="inv-qty">+${r.qty} 盒</td>
+        <td style="font-family:'Space Mono',monospace;font-size:12px;">$ ${formatNum(r.cost)}</td>
+        <td style="color:var(--muted);font-size:12px;">${r.note || ''}</td>
+      </tr>
+    `).join('');
+  }
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+modalClose.addEventListener('click', closeModal);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Attach click handler to table rows
+function attachRowClicks() {
+  document.querySelectorAll('#tableBody tr').forEach((row, i) => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const product = filtered[start + i];
+    if (product) {
+      row.addEventListener('click', () => openModal(product));
+    }
+  });
+}
+
+// Patch render to attach row clicks
+const _origRender = render;
+render = function() {
+  _origRender();
+  attachRowClicks();
+};
+
+// Initial render - 先載入進貨資料再顯示
+loadInventory().then(() => render());
 </script>
 </body>
 </html>
