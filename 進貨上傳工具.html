@@ -517,9 +517,9 @@
 <script>
 // ── Config ──
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-let APPS_SCRIPT_URL = '';
+let APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxkrrBhbJiiyNjP0axiP2hN2_yyT_nOgFT2J7DGctUXCZy772_KT6L9kl5ZNA0V9U0H/exec';
 
-let SHEET_ID = '';
+let SHEET_ID = '15ojTNIbe5hOBEERZGrKYa6Q2d1L3ONzieskrLo4HfYM';
 
 function saveConfig() {
   const url = document.getElementById('cfgUrl').value.trim();
@@ -534,11 +534,13 @@ function saveConfig() {
 }
 
 function loadConfig() {
-  const savedUrl = localStorage.getItem('apps_script_url');
-  const savedSid = localStorage.getItem('sheet_id');
-  if (savedUrl) { APPS_SCRIPT_URL = savedUrl; document.getElementById('cfgUrl').value = savedUrl; }
-  if (savedSid) { SHEET_ID = savedSid; document.getElementById('cfgSheetId').value = savedSid; }
-  if (savedUrl && savedSid) document.getElementById('configWrap').style.borderColor = 'rgba(74,222,128,0.3)';
+  const savedUrl = localStorage.getItem('apps_script_url') || 'https://script.google.com/macros/s/AKfycbxkrrBhbJiiyNjP0axiP2hN2_yyT_nOgFT2J7DGctUXCZy772_KT6L9kl5ZNA0V9U0H/exec';
+  const savedSid = localStorage.getItem('sheet_id') || '15ojTNIbe5hOBEERZGrKYa6Q2d1L3ONzieskrLo4HfYM';
+  APPS_SCRIPT_URL = savedUrl;
+  SHEET_ID = savedSid;
+  document.getElementById('cfgUrl').value = savedUrl;
+  document.getElementById('cfgSheetId').value = savedSid;
+  document.getElementById('configWrap').style.borderColor = 'rgba(74,222,128,0.3)';
 }
 
 // ── Date ──
@@ -752,6 +754,7 @@ async function submitToSheet() {
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.textContent = '⏳ 上傳中...';
+  hideAlerts();
 
   const payload = {
     action: 'addPurchase',
@@ -769,26 +772,28 @@ async function submitToSheet() {
   };
 
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    // 使用 GET + 參數方式，Apps Script doGet 接收
+    const url = APPS_SCRIPT_URL + '?data=' + encodeURIComponent(JSON.stringify(payload));
+    const res = await fetch(url, { method: 'GET', mode: 'no-cors' });
 
-    // no-cors 無法讀取回應，但資料已送出
-    showAlert('success', `✅ 已上傳 ${parsedItems.length} 筆進貨資料到 Google Sheet！庫存將自動更新。`);
+    // no-cors 成功不會拋錯
+    showAlert('success', `✅ 已上傳 ${parsedItems.length} 筆進貨資料到 Google Sheet！`);
     saveHistory(parsedItems);
     updateStats();
-    clearFile();
-    parsedItems = [];
-    document.getElementById('resultWrap').classList.remove('show');
+    setTimeout(() => {
+      clearFile();
+      parsedItems = [];
+      document.getElementById('resultWrap').classList.remove('show');
+    }, 2000);
 
   } catch (e) {
     showAlert('error', `上傳失敗：${e.message}`);
   }
 
   btn.disabled = false;
+  btn.textContent = '☁️ 寫入 Google Sheet 並更新庫存';
+}
+
   btn.textContent = '☁️ 寫入 Google Sheet 並更新庫存';
 }
 
